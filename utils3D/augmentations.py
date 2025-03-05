@@ -80,7 +80,7 @@ def random_zoom(im: torch.Tensor, labels, max_zoom=1.5, min_zoom=0.7, p=0.5):
     
     if random.random() < p:
         # retrieve original image shape (this is resized to imgsz x imgsz x imgsz by this point in the dataloader)
-        d, w, h = im.shape[1:]
+        channels, d, w, h = im.shape
         
         # setting limits for how far augmentation will zoom in or out
         max_zoom_factor = max_zoom
@@ -156,7 +156,7 @@ def random_zoom(im: torch.Tensor, labels, max_zoom=1.5, min_zoom=0.7, p=0.5):
             ymax = ymin + new_h
             
             # create a new tensor 
-            new_im = torch.rand(1, d, w, h)*(torch.max(im) - torch.min(im)) + torch.min(im)
+            new_im = torch.rand(channels, d, w, h)*(torch.max(im) - torch.min(im)) + torch.min(im)
             new_im[:,zmin:zmax, xmin:xmax, ymin:ymax] = im
             im = new_im
             del new_im

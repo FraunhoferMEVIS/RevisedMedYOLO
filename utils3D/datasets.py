@@ -275,7 +275,7 @@ class LoadNiftisAndLabels(Dataset):
         # reshape im from height, width, depth to depth, height, width to make it compatible with torch convolutions
         im = transpose_nifti_shape(im)
 
-        d0, h0, w0 = im.size()
+        d0, h0, w0, channels = im.size()
 
         # resize im to self.img_size
         im = change_nifti_size(im, self.img_size)
@@ -495,7 +495,7 @@ def open_nifti(filepath: str):
 
 
 def transpose_nifti_shape(nifti_tensor: torch.Tensor):
-    """Reshapes the tensor from height, width, depth order to depth, height, width
+    """Reshapes the tensor from height, width, depth, channels order to channels, depth, height, width
     to make it compatible with torch convolutions.
 
     Args:
@@ -504,14 +504,14 @@ def transpose_nifti_shape(nifti_tensor: torch.Tensor):
     Returns:
         nifti_tensor (torch.tensor): reshaped tensor
     """
-    nifti_tensor = torch.transpose(nifti_tensor, 0, 2)
-    nifti_tensor = torch.transpose(nifti_tensor, 1, 2)
+    nifti_tensor = torch.permute(nifti_tensor, (3, 2, 1, 0))
+
     return nifti_tensor
 
 
 def change_nifti_size(nifti_tensor: torch.Tensor, new_size: int):
     """Resizes a 3D tensor to a cube with edge length new_size.
-    Also adds the channel dimension.
+    Also adds the batch dimension.
 
     Args:
         nifti_tensor (torch.Tensor): The tensor to be resized
@@ -520,8 +520,6 @@ def change_nifti_size(nifti_tensor: torch.Tensor, new_size: int):
     Returns:
         nifti_tensor (torch.tensor): Resized, cubic tensor
     """
-    # add channel dimension for compatibility with later code
-    nifti_tensor = torch.unsqueeze(nifti_tensor, 0)
     # add batch dimension for functional interpolate
     nifti_tensor = torch.unsqueeze(nifti_tensor, 0)
     # resize image to a cube of size new_size
