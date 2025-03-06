@@ -297,7 +297,8 @@ def train(hyp, opt, device, callbacks):
                                            plots=False,
                                            callbacks=callbacks,
                                            compute_loss=compute_loss,
-                                           norm=norm)
+                                           norm=norm,
+                                           half=False)
                 
             # Update best mAP
             fi = fitness(np.array(results).reshape(1, -1))  # weighted combination of [P, R, mAP@.5, mAP@.5-.95]
