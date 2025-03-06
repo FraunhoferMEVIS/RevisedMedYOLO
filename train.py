@@ -149,7 +149,7 @@ def train(hyp, opt, device, callbacks):
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)  # plot_lr_scheduler(optimizer, scheduler, epochs)
 
     # EMA
-    ema = ModelEMA(model) if RANK in [-1, 0] else None
+    ema = ModelEMA(model, decay=hyp['ema_decay']) if RANK in [-1, 0] else None
     
     # Resume
     start_epoch, best_fitness = 0, 0.0
