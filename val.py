@@ -144,7 +144,7 @@ def run(data,
     confusion_matrix = ConfusionMatrix(nc=nc)
     names = {k: v for k, v in enumerate(model.names if hasattr(model, 'names') else model.module.names)}
     # class_map = list(range(1000))
-    s = ('%20s' + '%11s' * 6) % ('Class', 'Images', 'Labels', 'P', 'R', 'mAP@.5', 'mAP@.5:.95')
+    s = ('%20s' + '%11s' * 9) % ('Class', 'Images', 'Labels', 'P', 'R', 'mAP@.5', 'mAP@.5:.95', 'box', 'obj', 'cls')
     dt, p, r, f1, mp, mr, map50, map = [0.0, 0.0, 0.0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     loss = torch.zeros(3, device=device)
     # jdict, stats, ap, ap_class = [], [], [], []
@@ -232,10 +232,11 @@ def run(data,
         nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
     else:
         nt = torch.zeros(1)
-        
+    
+    loss_average = loss / len(dataloader)
     # Print results
-    pf = '%20s' + '%11i' * 2 + '%11.3g' * 4  # print format
-    print(pf % ('all', seen, nt.sum(), mp, mr, map50, map))
+    pf = '%20s' + '%11i' * 2 + '%11.3g' * 7  # print format
+    print(pf % ('all', seen, nt.sum(), mp, mr, map50, map, loss_average[0], loss_average[1], loss_average[2]))
     
     # Print results per class
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
