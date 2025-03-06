@@ -391,7 +391,8 @@ def nifti_dataloader(path: str, imgsz: int, batch_size: int, stride: int, single
                         num_workers=nw,
                         sampler=sampler,
                         pin_memory=True, # may need to set False to resolve memory issues
-                        collate_fn=LoadNiftisAndLabels.collate_fn)
+                        collate_fn=LoadNiftisAndLabels.collate_fn,
+                        shuffle=True)
     return dataloader, dataset
 
 
