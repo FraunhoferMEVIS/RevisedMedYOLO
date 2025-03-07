@@ -48,8 +48,8 @@ def multilabel_mask_maker(bbox_path: str, nifti_path: str, mask_path: str):
     # mask_array = np.zeros_like(nifti_array)
 
     # might need to flip order of height and width...
-    height = nifti_array.shape[0]
-    width = nifti_array.shape[1]
+    width = nifti_array.shape[0]
+    height = nifti_array.shape[1]
     depth = nifti_array.shape[2]
 
     box_dict = {}
@@ -117,8 +117,8 @@ def mask_maker(bbox_path: str, nifti_path: str, mask_path: str):
     mask_array = np.zeros_like(np.array(nifti.dataobj))
     
     # might need to flip order of height and width...
-    height = mask_array.shape[0]
-    width = mask_array.shape[1]           
+    width = mask_array.shape[0]           
+    height = mask_array.shape[1]
     depth = mask_array.shape[2]
     
     for target in label:

@@ -272,7 +272,7 @@ class LoadNiftisAndLabels(Dataset):
         path = self.img_files[i]
         im, affine = open_nifti(path)
 
-        # reshape im from height, width, depth to depth, height, width to make it compatible with torch convolutions
+        # reshape im from width, height, depth, channels to channels, depth, height, width to make it compatible with torch convolutions
         im = transpose_nifti_shape(im)
 
         d0, h0, w0, channels = im.size()
@@ -383,7 +383,7 @@ def nifti_dataloader(path: str, imgsz: int, batch_size: int, stride: int, single
                                       prefix=prefix)
 
     batch_size = min(batch_size, len(dataset))
-    nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, workers])  # number of workers
+    nw = min([os.cpu_count(), workers])  # number of workers
     sampler = torch.utils.data.distributed.DistributedSampler(dataset) if rank != -1 else None
     loader = InfiniteDataLoader
     dataloader = loader(dataset,
@@ -392,7 +392,8 @@ def nifti_dataloader(path: str, imgsz: int, batch_size: int, stride: int, single
                         sampler=sampler,
                         pin_memory=True, # may need to set False to resolve memory issues
                         collate_fn=LoadNiftisAndLabels.collate_fn,
-                        shuffle=True)
+                        shuffle=True,
+                        persistent_workers=True)
     return dataloader, dataset
 
 
@@ -485,10 +486,6 @@ def open_nifti(filepath: str):
     """
     nifti = nib.load(filepath)
     nifti_affine = nifti.affine
-    # nifti_array = np.array(nifti.dataobj)
-    # assert nifti_array is not None, 'Image Not Found ' + filepath
-    # nifti_tensor = torch.tensor(nifti_array, dtype=torch.float)
-    # return nifti_tensor, nifti_affine
     nifti = np.array(nifti.dataobj)
     assert nifti is not None, 'Image Not Found ' + filepath
     nifti = torch.tensor(nifti, dtype=torch.float)
@@ -496,7 +493,7 @@ def open_nifti(filepath: str):
 
 
 def transpose_nifti_shape(nifti_tensor: torch.Tensor):
-    """Reshapes the tensor from height, width, depth, channels order to channels, depth, height, width
+    """Reshapes the tensor from width, height, depth, channels order to channels, depth, height, width
     to make it compatible with torch convolutions.
 
     Args:
