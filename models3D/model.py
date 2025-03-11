@@ -29,9 +29,6 @@ from utils.general import make_divisible
 # 3D YOLO imports
 
 
-# Configuration
-default_size = 350 # edge length for testing
-
 
 def attempt_load(weights, map_location=None, inplace=True, fuse=True):
     """Loads an ensemble of models weights=[a,b,c] or a single model weights=[a] or weights=a
@@ -266,10 +263,12 @@ class Detect(nn.Module):
                 if self.grid[i].shape[2:5] != x[i].shape[2:5]:
                     self.grid[i], self.anchor_grid[i] = self._make_grid(nz, nx, ny, i)
 
-                y = x[i].sigmoid()
+                y = x[i].clone()
                 # in training mode these are calculated in the loss function
-                y[..., 0:3] = (y[..., 0:3] * 2. - 0.5 + self.grid[i]) * self.stride[i]  # zxy
-                y[..., 3:6] = (y[..., 3:6] * 2) ** 2 * self.anchor_grid[i]  # dwh
+                y[..., 0:3] = (y[..., 0:3].sigmoid() * 2. - 0.5 + self.grid[i]) * self.stride[i]  # zxy
+                y[..., 3:6] = (y[..., 3:6].sigmoid() * 2) ** 2 * self.anchor_grid[i]  # dwh
+                y[..., 6] = y[..., 6].sigmoid()
+                y[..., 7:] = y[..., 7:].softmax(dim=5)
 
                 z.append(y.view(bs, -1, self.no))
 
@@ -391,7 +390,7 @@ def parse_model(d, ch):
 
 
 class Model(nn.Module):
-    def __init__(self, cfg=ROOT / 'models3D/yolo3Ds.yaml', ch=1, nc=None, anchors=None):
+    def __init__(self, cfg=ROOT / 'models3D/yolo3Ds.yaml', ch=1, nc=None, anchors=None, image_size=350):
         """3D YOLO model base class.
 
         Args:
@@ -420,6 +419,7 @@ class Model(nn.Module):
         self.model, self.save = parse_model(deepcopy(self.yaml), ch=[ch])  # model, savelist
         self.names = [str(i) for i in range(self.yaml['nc'])]  # default names
         self.inplace = self.yaml.get('inplace', True)
+        self.image_size = image_size
 
         # Build strides, anchors
         m = self.model[-1]  # Detect()
@@ -450,14 +450,10 @@ class Model(nn.Module):
         return x
 
     def _initialize_biases(self, cf=None):  # initialize biases into Detect(), cf is class frequency
-        # Currently the 2D code, may need to be adjusted in the future if performance is poor
-        # https://arxiv.org/abs/1708.02002 section 3.3
-        # cf = torch.bincount(torch.tensor(np.concatenate(dataset.labels, 0)[:, 0]).long(), minlength=nc) + 1.
         m = self.model[-1]  # Detect() module
         for mi, s in zip(m.m, m.stride):  # from
-            b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3,85)
-            b.data[:, 4] += math.log(8 / (default_size / s) ** 3)  # obj (8 objects per 350^3 image)
-            b.data[:, 5:] += math.log(0.6 / (m.nc - 0.99)) if cf is None else torch.log(cf / cf.sum())  # cls
+            b = mi.bias.view(m.na, -1)  # conv.bias(255) to (3, 6+1+n_classes)
+            b.data[:, 6] += math.log(8 / (self.image_size / s) ** 3)  # obj (8 objects per image_size^3 image)
             mi.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
     def fuse(self):   # fuse model Conv3d() + BatchNorm3d() layers

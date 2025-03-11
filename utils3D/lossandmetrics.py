@@ -203,7 +203,7 @@ class ComputeLossVF:
         self.hyp = model.hyp  # hyperparameters
 
         # Define criteria
-        BCEcls = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([self.hyp['cls_pw']], device=device))
+        CEcls = nn.CrossEntropyLoss()
         BCEobj = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([self.hyp['obj_pw']], device=device))
 
         # Class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
@@ -212,12 +212,12 @@ class ComputeLossVF:
         # Focal loss
         self.g = self.hyp['fl_gamma']  # focal loss gamma
         if self.g > 0:
-            BCEcls = FocalLoss(BCEcls, self.g)
+            CEcls = FocalLoss(CEcls, self.g)
 
         det = model.module.model[-1] if is_parallel(model) else model.model[-1]  # model's Detect() module in the last layer
         self.balance = {3: [4.0, 1.0, 0.4]}.get(det.nl, [4.0, 1.0, 0.25, 0.06, .02])  # P3-P7
         self.ssi = list(det.stride).index(16) if autobalance else 0  # stride 16 index
-        self.BCEcls, self.BCEobj, self.autobalance = BCEcls, BCEobj, autobalance
+        self.CEcls, self.BCEobj, self.autobalance = CEcls, BCEobj, autobalance
         self.gr = 1.0
         # extract model hyperparameters from Detect() module and store them as class attributes
         self.na = det.na
@@ -257,7 +257,7 @@ class ComputeLossVF:
                 # extra box loss factors to test
                 # center_dist = bbox_centerDist(pbox.T, tbox[i], z1x1y1z2x2y2=False)
                 # lbox += center_dist.mean()
-                lbox += bbox_centerDist(pbox.T, tbox[i], z1x1y1z2x2y2=False).mean()
+                # lbox += bbox_centerDist(pbox.T, tbox[i], z1x1y1z2x2y2=False).mean()
 
                 # Objectness
                 score_iou = iou.detach().clamp(0).type(tobj.dtype)
@@ -270,7 +270,7 @@ class ComputeLossVF:
                 if self.nc > 1:  # cls loss (only if multiple classes)
                     t = torch.full_like(ps[:, 7:], self.cn, device=device)  # targets
                     t[range(n), tcls[i]] = self.cp
-                    lcls += (self.BCEcls(ps[:, 7:], t))  # BCE
+                    lcls += (self.CEcls(ps[:, 7:], t))  # CE
 
             # using varifocal loss
             alpha = 0.75
