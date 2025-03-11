@@ -129,7 +129,7 @@ def run(data,
     # Configure
     model.eval()
     nc = 1 if single_cls else int(data['nc'])  # number of classes
-    iouv = torch.linspace(0.5, 0.95, 10).to(device)  # iou vector for mAP@0.5:0.95
+    iouv = torch.linspace(0.1, 0.95, 18).to(device)  # iou vector for mAP@0.1:0.95
     niou = iouv.numel()
     
     # Dataloader
@@ -143,15 +143,12 @@ def run(data,
     seen = 0
     confusion_matrix = ConfusionMatrix(nc=nc)
     names = {k: v for k, v in enumerate(model.names if hasattr(model, 'names') else model.module.names)}
-    # class_map = list(range(1000))
-    s = ('%20s' + '%11s' * 9) % ('Class', 'Images', 'Labels', 'P', 'R', 'mAP@.5', 'mAP@.5:.95', 'box', 'obj', 'cls')
     dt, p, r, f1, mp, mr, map50, map = [0.0, 0.0, 0.0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     loss = torch.zeros(3, device=device)
-    # jdict, stats, ap, ap_class = [], [], [], []
     stats, ap, ap_class = [], [], []
     
     # for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
-    for _, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
+    for _, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc='Validation')):
         t1 = time_sync()
         img = img.to(device, non_blocking=True)
         img = img.half() if half else img.float()  # uint8 to fp16/32
@@ -227,7 +224,7 @@ def run(data,
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats) and stats[0].any():
         p, r, ap, f1, ap_class = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
-        ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
+        ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.1, AP@0.1:0.95
         mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
         nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
     else:
@@ -235,7 +232,9 @@ def run(data,
     
     loss_average = loss / len(dataloader)
     # Print results
-    pf = '%20s' + '%11i' * 2 + '%11.3g' * 7  # print format
+    s = ('%12s' + '%11s' * 9) % ('Class', 'Images', 'Labels', 'P', 'R', 'mAP@.1', 'mAP@.1:.95', 'box', 'obj', 'cls')
+    print(s)
+    pf = '%12s' + '%11i' * 2 + '%11.3g' * 7  # print format
     print(pf % ('all', seen, nt.sum(), mp, mr, map50, map, loss_average[0], loss_average[1], loss_average[2]))
     
     # Print results per class

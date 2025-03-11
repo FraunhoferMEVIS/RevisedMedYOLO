@@ -11,7 +11,7 @@ import numpy as np
 
 def fitness(x):
     # Model fitness as a weighted combination of metrics
-    w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.5, mAP@0.5:0.95]
+    w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.1, mAP@0.1:0.95]
     return (x[:, :4] * w).sum(1)
 
 
@@ -23,7 +23,7 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
         conf:  Objectness value from 0-1 (nparray).
         pred_cls:  Predicted object classes (nparray).
         target_cls:  True object classes (nparray).
-        plot:  Plot precision-recall curve at mAP@0.5
+        plot:  Plot precision-recall curve at mAP@0.1
         save_dir:  Plot save directory
     # Returns
         The average precision as computed in py-faster-rcnn.
@@ -64,7 +64,7 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir='.', names
             for j in range(tp.shape[1]):
                 ap[ci, j], mpre, mrec = compute_ap(recall[:, j], precision[:, j])
                 if plot and j == 0:
-                    py.append(np.interp(px, mrec, mpre))  # precision at mAP@0.5
+                    py.append(np.interp(px, mrec, mpre))  # precision at mAP@0.1
 
     # Compute F1 (harmonic mean of precision and recall)
     f1 = 2 * p * r / (p + r + 1e-16)
@@ -121,7 +121,7 @@ def plot_pr_curve(px, py, ap, save_dir='pr_curve.png', names=()):
     else:
         ax.plot(px, py, linewidth=1, color='grey')  # plot(recall, precision)
 
-    ax.plot(px, py.mean(1), linewidth=3, color='blue', label='all classes %.3f mAP@0.5' % ap[:, 0].mean())
+    ax.plot(px, py.mean(1), linewidth=3, color='blue', label='all classes %.3f mAP@0.1' % ap[:, 0].mean())
     ax.set_xlabel('Recall')
     ax.set_ylabel('Precision')
     ax.set_xlim(0, 1)
