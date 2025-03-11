@@ -98,7 +98,8 @@ def run(data,
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
-        norm='CT'  # normalization mode, options: CT, MR, Other
+        norm='CT',  # normalization mode, options: CT, MR, Other
+        epoch=None
         ):
     
     # Initialize/load model and set device
@@ -144,7 +145,8 @@ def run(data,
     confusion_matrix = ConfusionMatrix(nc=nc)
     names = {k: v for k, v in enumerate(model.names if hasattr(model, 'names') else model.module.names)}
     dt, p, r, f1, mp, mr, map50, map = [0.0, 0.0, 0.0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-    loss = torch.zeros(3, device=device)
+    loss = torch.zeros(1, device=device)
+    loss_items = torch.zeros(3, device=device)
     stats, ap, ap_class = [], [], []
     
     # for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
@@ -174,7 +176,9 @@ def run(data,
 
         # Compute loss
         if compute_loss:
-            loss += compute_loss([x.float() for x in train_out], targets)[1]  # box, obj, cls
+            current_loss, current_loss_items = compute_loss([x.float() for x in train_out], targets)
+            loss += current_loss
+            loss_items += current_loss_items
 
         # Run non max suppression
         targets[:, 2:] *= torch.Tensor([depth, width, height, depth, width, height]).to(device)  # to pixels
@@ -230,12 +234,13 @@ def run(data,
     else:
         nt = torch.zeros(1)
     
+    loss_items_average = loss_items / len(dataloader)
     loss_average = loss / len(dataloader)
     # Print results
     s = ('%12s' + '%11s' * 9) % ('Class', 'Images', 'Labels', 'P', 'R', 'mAP@.1', 'mAP@.1:.95', 'box', 'obj', 'cls')
     print(s)
     pf = '%12s' + '%11i' * 2 + '%11.3g' * 7  # print format
-    print(pf % ('all', seen, nt.sum(), mp, mr, map50, map, loss_average[0], loss_average[1], loss_average[2]))
+    print(pf % ('all', seen, nt.sum(), mp, mr, map50, map, loss_items_average[0], loss_items_average[1], loss_items_average[2]))
     
     # Print results per class
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
@@ -252,7 +257,11 @@ def run(data,
     if plots:
         confusion_matrix.plot(save_dir=save_dir, names=list(names.values()))
         callbacks.run('on_val_end')
-        
+    
+    # Save validation loss
+    with open(save_dir / 'validation_loss.csv', 'a') as file:
+        file.writelines(f'{epoch},{loss_average.item()},{loss_items_average[0]},{loss_items_average[1]},{loss_items_average[2]},{map50},{map}\n')
+    
     # Return results
     model.float()  # for training
     if not training:
@@ -261,7 +270,7 @@ def run(data,
     maps = np.zeros(nc) + map
     for i, c in enumerate(ap_class):
         maps[c] = ap[i]
-    return (mp, mr, map50, map, *(loss.cpu() / len(dataloader)).tolist()), maps, t
+    return (mp, mr, map50, map, *(loss_items.cpu() / len(dataloader)).tolist()), maps, t
     
     
 def parse_opt():

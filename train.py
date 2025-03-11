@@ -79,6 +79,12 @@ def train(hyp, opt, device, callbacks):
     with open(save_dir / 'opt.yaml', 'w') as f:
         yaml.safe_dump(vars(opt), f, sort_keys=False)
     data_dict = None
+    
+    # Initialize training and validation loss files
+    with open(save_dir / 'training_loss.csv', 'w') as file:
+        file.writelines('epoch,total_loss,bounding_box_loss,objectness_loss,classification_loss\n')
+    with open(save_dir / 'validation_loss.csv', 'w') as file:
+        file.writelines('epoch,total_loss,bounding_box_loss,objectness_loss,classification_loss,mAP@0.1,mAP@0.1:0.95\n')
    
     # Config
     plots = False
@@ -93,7 +99,7 @@ def train(hyp, opt, device, callbacks):
     pretrained = weights.endswith('.pt')
     if pretrained:
         ckpt = torch.load(weights,map_location=device)  # load checkpoint
-        model = Model(cfg or ckpt['model'].yaml, ch=1, nc=nc, anchors=hyp.get('anchors')).to(device) # create model
+        model = Model(cfg or ckpt['model'].yaml, ch=1, nc=nc, anchors=hyp.get('anchors'), image_size=hyp['img_size']).to(device) # create model
         exclude = ['anchor'] if (cfg or hyp.get('anchors')) and not resume else []  # exclude keys
         csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
         csd = intersect_dicts(csd, model.state_dict(), exclude=exclude)  # intersect
@@ -214,7 +220,8 @@ def train(hyp, opt, device, callbacks):
 
     for epoch in range(epochs):  # epoch ------------------------------------------------------------------
         model.train()
-        mloss = torch.zeros(3, device=device)  # mean losses
+        mean_loss = torch.zeros(1, device=device)
+        mean_loss_items = torch.zeros(3, device=device)  # mean losses
         if RANK != -1:
             train_loader.sampler.set_epoch(epoch)
         pbar = enumerate(train_loader)
@@ -268,15 +275,18 @@ def train(hyp, opt, device, callbacks):
         
             # Log
             if RANK in [-1, 0]:
-                mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
+                mean_loss = (mean_loss * i + loss) / (i + 1)  # update mean losses
+                mean_loss_items = (mean_loss_items * i + loss_items) / (i + 1)  # update mean losses
                 mem = f'{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}G'  # (GB)
                 progress_string = ('%10s' * 2 + '%10.4g' * 5) % (
-                    f'{epoch}/{epochs - 1}', mem, *mloss, targets.shape[0], imgs.shape[-1])
+                    f'{epoch}/{epochs - 1}', mem, *mean_loss_items, targets.shape[0], imgs.shape[-1])
                 pbar.set_description(progress_string)
                 callbacks.run('on_train_batch_end', ni, model, imgs, targets, paths, plots, False)
             del imgs, targets
             # end batch ------------------------------------------------------------------------------------------------
         print(progress_string)
+        with open(save_dir / 'training_loss.csv', 'a') as file:
+            file.writelines(f'{epoch},{mean_loss.item()},{mean_loss_items[0]},{mean_loss_items[1]},{mean_loss_items[2]}\n')
         
         # Scheduler
         lr = [x['lr'] for x in optimizer.param_groups]  # for loggers
@@ -300,13 +310,14 @@ def train(hyp, opt, device, callbacks):
                                            callbacks=callbacks,
                                            compute_loss=compute_loss,
                                            norm=norm,
-                                           half=False)
+                                           half=False,
+                                           epoch=epoch)
                 
             # Update best mAP
             fi = fitness(np.array(results).reshape(1, -1))  # weighted combination of [P, R, mAP@.1, mAP@.1-.95]
             if fi > best_fitness:
                 best_fitness = fi
-            log_vals = list(mloss) + list(results) + lr
+            log_vals = list(mean_loss_items) + list(results) + lr
             callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
             
             # Save model
