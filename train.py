@@ -17,7 +17,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn as nn
 import yaml
-from torch.cuda import amp
+from torch import amp
 from torch.optim import Adam, SGD, lr_scheduler
 from tqdm import tqdm
 
@@ -98,7 +98,7 @@ def train(hyp, opt, device, callbacks):
     check_suffix(weights, '.pt')
     pretrained = weights.endswith('.pt')
     if pretrained:
-        ckpt = torch.load(weights,map_location=device)  # load checkpoint
+        ckpt = torch.load(weights, map_location=device, weights_only=False)  # load checkpoint
         model = Model(cfg or ckpt['model'].yaml, ch=1, nc=nc, anchors=hyp.get('anchors'), image_size=hyp['img_size']).to(device) # create model
         exclude = ['anchor'] if (cfg or hyp.get('anchors')) and not resume else []  # exclude keys
         csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
@@ -253,7 +253,7 @@ def train(hyp, opt, device, callbacks):
                         x['momentum'] = np.interp(ni, xi, [hyp['warmup_momentum'], hyp['momentum']])
                         
             # Forward
-            with amp.autocast(enabled=cuda):
+            with amp.autocast('cuda' if cuda else 'cpu'):
                 pred = model(imgs)  # forward
                 loss, loss_items = compute_loss(pred, targets.to(device).float())  # loss scaled by batch_size
                 del pred

@@ -9,6 +9,7 @@ PyYAML>=5.3.1
 scipy>=1.4.1
 tqdm>=4.41.0
 nibabel>=3.3.3
+onnx==1.17
 
 # Plotting ------------------------------------
 pandas>=1.1.4
