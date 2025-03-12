@@ -27,14 +27,11 @@ from utils3D.datasets import LoadNiftis
 from utils3D.general import non_max_suppression, scale_coords, zxyzxy2zxydwh
 
 
-# Configuration
-default_size = 350 # edge length for testing
-
 
 @torch.no_grad()
 def run(weights,  # model.pt path(s)
         source=ROOT / 'data/images',  # directory containing images to run inference on
-        imgsz=default_size,
+        imgsz=350,
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=100,  # maximum detections per image
@@ -47,7 +44,8 @@ def run(weights,  # model.pt path(s)
         name='exp',  # save results to project/name
         exist_ok=False,  # existing project/name ok, do not increment
         half=False,  # use FP16 half-precision inference
-        norm='CT'  # normalization mode, options: CT, MR, Other
+        norm='CT',  # normalization mode, options: CT, MR, Other
+        input_channels=1
         ):
     source = str(source)
 
@@ -76,7 +74,7 @@ def run(weights,  # model.pt path(s)
     
     # Run inference
     if device.type != 'cpu':
-        model(torch.zeros(1, 1, imgsz, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
+        model(torch.zeros(1, input_channels, imgsz, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
     
     seen = 0
     
@@ -101,7 +99,7 @@ def run(weights,  # model.pt path(s)
         pred = model(img)[0]
 
         # NMS
-        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, multi_label=True, max_det=max_det)
+        pred = non_max_suppression(pred, conf_thres, iou_thres, classes, agnostic_nms, multi_label=False, max_det=max_det)
         
         # Process predictions
         for _, det in enumerate(pred):  # per image
@@ -150,7 +148,7 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default='', help='model path(s)')
     parser.add_argument('--source', type=str, default='', help='file/dir')
-    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[default_size], help='inference size characteristic length')
+    parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[350], help='inference size characteristic length')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
     parser.add_argument('--max-det', type=int, default=100, help='maximum detections per image')
@@ -164,6 +162,7 @@ def parse_opt():
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--norm', type=str, default='CT', help='normalization type, options: CT, MR, Other')
+    parser.add_argument('--input-channels', type=int, default=1, help='Number of input channels for model')
     opt = parser.parse_args()
     print_args(FILE.stem, opt)
     return opt

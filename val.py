@@ -184,7 +184,7 @@ def run(data,
         targets[:, 2:] *= torch.Tensor([depth, width, height, depth, width, height]).to(device)  # to pixels
         lb = [targets[targets[:, 0] == i, 1:] for i in range(nb)] if save_hybrid else []  # for autolabelling
         t3 = time_sync()
-        out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=True, agnostic=single_cls)
+        out = non_max_suppression(out, conf_thres, iou_thres, labels=lb, multi_label=False, agnostic=single_cls)
         dt[2] += time_sync() - t3
 
         # Statistics per image
