@@ -17,7 +17,7 @@ from utils3D.datasets import LoadNiftisAndLabels
 
 
 # Configuration
-default_size = 350 # edge length for testing
+default_size = (350, 350, 350) # edge length for testing
 
 
 def nifti_check_anchors(dataset, model, thr=4.0, imgsz=default_size):
@@ -27,25 +27,24 @@ def nifti_check_anchors(dataset, model, thr=4.0, imgsz=default_size):
         dataset (torch.Dataset): Dataset the anchors will be used with.
         model (torch.Module): Model that will be trained with the anchors
         thr (float, optional): Threshold of ratio between anchors and labels for a given anchor to be considered valid. Defaults to 4.0.
-        imgsz (int, optional): Image size used during the training process. Defaults to default_size.
+        imgsz (tuple[int], optional): Image size (z, y, x) used during the training process. Defaults to default_size.
 
     """
     prefix = 'autoanchor: '
     print(f'\n{prefix}Analyzing anchors... ', end='')
     m = model.module.model[-1] if hasattr(model, 'module') else model.model[-1]  # Detect()
 
-    # converting to pixel widths instead of fractional width using dimensions of resized images
-    shapes = imgsz * dataset.shapes / dataset.shapes.max(1, keepdims=True)
+    imgsz_zxy = np.array([imgsz[0], imgsz[2], imgsz[1]])
     scale = np.random.uniform(0.9, 1.1, size=(dataset.shapes.shape[0],1))  # augment scale
-    dwh = torch.tensor(np.concatenate([l[:, 4:7] * s for s, l in zip(shapes * scale, dataset.labels)])).float()  # convert dwh from proportion to voxel values
+    dwh = torch.tensor(np.concatenate([label[:, 4:7] * shape for shape, label in zip(imgsz_zxy * scale, dataset.labels)])).float()  # convert dwh from proportion to voxel values
 
-    def metric(k):  # compute metrics for anchors
-        r = dwh[:, None] / k[None]
+    def metric(anchors):  # compute metrics for anchors
+        r = dwh[:, None] / anchors[None]
         x = torch.min(r, 1./r).min(2)[0] # ratio metric
         best = x.max(1)[0]  # best_x
-        aat = (x > 1. / thr).float().sum(1).mean()  # anchors above threshold
-        bpr = (best > 1. / thr).float().mean()  # best possible recall
-        return bpr, aat
+        anchors_above_threshold = (x > 1. / thr).float().sum(1).mean()
+        best_possible_recall = (best > 1. / thr).float().mean()
+        return best_possible_recall, anchors_above_threshold
 
     anchors = m.anchors.clone() * m.stride.to(m.anchors.device).view(-1, 1, 1)  # current anchors
     bpr, aat = metric(anchors.cpu().view(-1, 3))
@@ -76,7 +75,7 @@ def nifti_kmean_anchors(dataset='./data/example.yaml', n=9, img_size=default_siz
             Arguments:
                 dataset (str or torch.Dataset): path to data.yaml, or a loaded dataset
                 n (int): number of anchors
-                img_size (int): image size used for training
+                img_size (tuple[int]): image size (z, y, x) used for training
                 thr (float): anchor-label wh ratio threshold hyperparameter hyp['anchor_t'] used for training, default=4.0
                 gen (int): generations to evolve anchors using genetic algorithm
                 verbose (bool): print all results
@@ -119,8 +118,8 @@ def nifti_kmean_anchors(dataset='./data/example.yaml', n=9, img_size=default_siz
         dataset = LoadNiftisAndLabels(data_dict['train'], augment=False)
 
     # converting to pixel widths instead of fractional width using dimensions of resized images
-    shapes = img_size * dataset.shapes / dataset.shapes
-    dwh0 = np.concatenate([l[:,4:7] * s for s, l in zip(shapes, dataset.labels)]) # dwh
+    img_size_zxy = np.array([img_size[0], img_size[2], img_size[1]])
+    dwh0 = np.concatenate([label[:,4:7] * img_size_zxy for label in dataset.labels]) # dwh
 
     # Filter very small objects
     size_thresh = 4.0

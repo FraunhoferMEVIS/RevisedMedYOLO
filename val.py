@@ -78,7 +78,9 @@ def process_batch(detections, labels, iouv):
 def run(data,
         weights=None,  # model.pt path(s)
         batch_size=32,  # batch size
-        imgsz=default_size,  # inference size (pixels)
+        img_size_x=default_size,  # inference size (pixels) 
+        img_size_y=default_size,  # inference size (pixels) 
+        img_size_z=default_size,  # inference size (pixels) 
         conf_thres=0.1,  # confidence threshold
         iou_thres=0.6,  # NMS IoU threshold
         task='val',  # train, val, test, speed or study
@@ -101,6 +103,8 @@ def run(data,
         norm='CT',  # normalization mode, options: CT, MR, Other
         epoch=None
         ):
+    
+    imgsz = (img_size_z, img_size_y, img_size_x)
     
     # Initialize/load model and set device
     training = model is not None
@@ -136,7 +140,7 @@ def run(data,
     # Dataloader
     if not training:
         if device.type != 'cpu':
-            model(torch.zeros(1, 1, imgsz, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
+            model(torch.zeros(1, 1, img_size_z, img_size_y, img_size_x).to(device).type_as(next(model.parameters())))  # run once
         pad = 0.0 if task == 'speed' else 0.5
         task = task if task in ('train', 'val', 'test') else 'val'  # path to train/val/test images
         dataloader = nifti_dataloader(data[task], imgsz, batch_size, gs, single_cls=single_cls, pad=pad, prefix=colorstr(f'{task}: '))[0]
@@ -250,7 +254,7 @@ def run(data,
     # Print speeds
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
     if not training:
-        shape = (batch_size, 1, imgsz, imgsz, imgsz)
+        shape = (batch_size, 1, img_size_z, img_size_y, img_size_x)
         print(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {shape}' % t)
     
     # Plots
@@ -278,7 +282,9 @@ def parse_opt():
     parser.add_argument('--data', type=str, default=ROOT / 'data/example.yaml', help='dataset.yaml path')
     parser.add_argument('--weights', nargs='+', type=str, default='', help='model.pt path(s)')
     parser.add_argument('--batch-size', type=int, default=4, help='batch size')
-    parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=default_size, help='inference size (pixels)')
+    parser.add_argument('--img-size-x', type=int, default=default_size, help='train, val image size (pixels) for x axis')
+    parser.add_argument('--img-size-y', type=int, default=default_size, help='train, val image size (pixels) for y axis')
+    parser.add_argument('--img-size-z', type=int, default=default_size, help='train, val image size (pixels) for z axis')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.6, help='NMS IoU threshold')
     parser.add_argument('--task', default='val', help='train, val, test, speed or study')

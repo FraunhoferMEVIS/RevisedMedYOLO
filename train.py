@@ -124,7 +124,7 @@ def train(hyp, opt, device, callbacks):
             v.requires_grad = False
     
     # Image size
-    imgsz = opt.imgsz
+    imgsz = (opt.img_size_z, opt.img_size_y, opt.img_size_x)
     stride = model.stride
     
     # Optimizer
@@ -199,7 +199,7 @@ def train(hyp, opt, device, callbacks):
     nl = de_parallel(model).model[-1].nl  # number of detection layers (to scale hyps), default is 3
     hyp['box'] *= 3. / nl  # scale to layers
     hyp['cls'] *= nc / 80. * 3. / nl  # scale to classes and layers
-    hyp['obj'] *= (imgsz / default_size) ** 3 * 3. / nl  # scale to image size and layers
+    hyp['obj'] *= (imgsz[0] * imgsz[1] * imgsz[2] / (default_size**3)) * 3. / nl  # scale to image size and layers
     hyp['label_smoothing'] = opt.label_smoothing
     model.nc = nc  # attach number of classes to model
     model.hyp = hyp  # attach hyperparameters to model
@@ -225,7 +225,7 @@ def train(hyp, opt, device, callbacks):
         if RANK != -1:
             train_loader.sampler.set_epoch(epoch)
         pbar = enumerate(train_loader)
-        print(('\n' + '%10s' * 7) % ('Epoch', 'gpu_mem', 'box', 'obj', 'cls', 'labels', 'img_size'))
+        print(('\n' + '%10s' * 6) % ('Epoch', 'gpu_mem', 'box', 'obj', 'cls', 'labels'))
         if RANK in [-1, 0]:
             pbar = tqdm(pbar, total=nb)  # progress bar
         optimizer.zero_grad()
@@ -278,8 +278,8 @@ def train(hyp, opt, device, callbacks):
                 mean_loss = (mean_loss * i + loss) / (i + 1)  # update mean losses
                 mean_loss_items = (mean_loss_items * i + loss_items) / (i + 1)  # update mean losses
                 mem = f'{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}G'  # (GB)
-                progress_string = ('%10s' * 2 + '%10.4g' * 5) % (
-                    f'{epoch}/{epochs - 1}', mem, *mean_loss_items, targets.shape[0], imgs.shape[-1])
+                progress_string = ('%10s' * 2 + '%10.4g' * 4) % (
+                    f'{epoch}/{epochs - 1}', mem, *mean_loss_items, targets.shape[0])
                 pbar.set_description(progress_string)
                 callbacks.run('on_train_batch_end', ni, model, imgs, targets, paths, plots, False)
             del imgs, targets
@@ -301,7 +301,9 @@ def train(hyp, opt, device, callbacks):
             if not noval or final_epoch:  # Calculate mAP
                 results, _, _ = val.run(data_dict,
                                            batch_size=batch_size // WORLD_SIZE * 2,
-                                           imgsz=imgsz,
+                                           img_size_x=imgsz[2],
+                                           img_size_y=imgsz[1],  
+                                           img_size_z=imgsz[0],
                                            model=ema.ema,
                                            single_cls=single_cls,
                                            dataloader=val_loader,
@@ -380,7 +382,9 @@ def parse_opt(known=False):
     parser.add_argument('--hyp', type=str, default=ROOT / 'data/hyps/hyp.scratch.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=default_epochs)
     parser.add_argument('--batch-size', type=int, default=default_batch, help='total batch size for all GPUs')
-    parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=default_size, help='train, val image size (pixels)')
+    parser.add_argument('--img-size-x', type=int, default=default_size, help='train, val image size (pixels) for x axis')
+    parser.add_argument('--img-size-y', type=int, default=default_size, help='train, val image size (pixels) for y axis')
+    parser.add_argument('--img-size-z', type=int, default=default_size, help='train, val image size (pixels) for z axis')
     parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')
     parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')
     parser.add_argument('--noval', action='store_true', help='only validate final epoch')

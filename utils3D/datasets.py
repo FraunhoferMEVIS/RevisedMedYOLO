@@ -27,7 +27,7 @@ from utils3D.augmentations import tensor_cutout, random_zoom
 # Configuration
 IMG_FORMATS = ['nii', 'nii.gz']  # acceptable image suffixes, note nii.gz compatible by checking for presence of 'nii' in -2 place
 NUM_THREADS = min(8, os.cpu_count())  # number of multiprocessing threads
-default_size = 350 # edge length for testing
+default_size = (350, 350, 350) # edge length for testing
 
 
 def file_lister_train(parent_dir: List[str], prefix=''):
@@ -95,7 +95,7 @@ class LoadNiftis(Dataset):
 
         Args:
             path (str): parent directory for the Dataset's files
-            img_size (int, optional): edge length for the cube input will be reshaped to. Defaults to default_size (currently 350).
+            img_size (tuple[int], optional): z, y, x extents the input will be reshaped to. Defaults to default_size (currently 350).
             stride (int, optional): model stride, used for resizing and augmentation, currently unimplemented. Defaults to 32.
         """
         
@@ -147,7 +147,7 @@ class LoadNiftisAndLabels(Dataset):
 
         Args:
             path (str): parent directory for the Dataset's files
-            img_size (int, optional): edge length for the cube input will be reshaped to. Defaults to default_size (currently 350).
+            img_size (tuple[int], optional): z, y, x extents the input will be reshaped to. Defaults to default_size (currently 350).
             batch_size (int, optional): size of the batch to return. Defaults to 4.
             augment (bool, optional): determines whether data will be augmented, currently unimplemented. Defaults to False.
             hyp (Dict, optional): dictionary containing augmentation configuration hyperparameters, currently unimplemented. Defaults to None.
@@ -350,14 +350,14 @@ class LoadNiftisAndLabels(Dataset):
         return torch.stack(img, 0), torch.cat(label, 0), path, shapes
 
 
-def nifti_dataloader(path: str, imgsz: int, batch_size: int, stride: int, single_cls=False, hyp=None, augment=False, pad=0.0,
+def nifti_dataloader(path: str, imgsz: tuple[int], batch_size: int, stride: int, single_cls=False, hyp=None, augment=False, pad=0.0,
                      rank=-1, workers=8, prefix=''):
     """This is the dataloader used in the training process
     The same as that of 2D YOLO, just built around a different Dataset definition
 
     Args:
         path (str): path to the directory containing the training files
-        imgsz (int): edge length for the cube input will be reshaped to.
+        imgsz (tuple[int]): z, y, x extent the input will be reshaped to
         batch_size (int): size of the batch to return.
         stride (int): model stride, used for resizing and augmentation
         hyp (Dict, optional): dictionary containing augmentation configuration hyperparameters. Defaults to None.
@@ -507,21 +507,20 @@ def transpose_nifti_shape(nifti_tensor: torch.Tensor):
     return nifti_tensor
 
 
-def change_nifti_size(nifti_tensor: torch.Tensor, new_size: int):
-    """Resizes a 3D tensor to a cube with edge length new_size.
+def change_nifti_size(nifti_tensor: torch.Tensor, new_size: tuple[int]):
+    """Resizes a 3D tensor to z, y, x extents of new_size.
     Also adds the batch dimension.
 
     Args:
         nifti_tensor (torch.Tensor): The tensor to be resized
-        new_size (int): The edge length for the resized, cubic tensor
+        new_size (tuple[int]): The edge length for the resized, cubic tensor
 
     Returns:
         nifti_tensor (torch.tensor): Resized, cubic tensor
     """
     # add batch dimension for functional interpolate
     nifti_tensor = torch.unsqueeze(nifti_tensor, 0)
-    # resize image to a cube of size new_size
-    nifti_tensor = torch.nn.functional.interpolate(nifti_tensor, size=(new_size, new_size, new_size), mode='trilinear', align_corners=False)
+    nifti_tensor = torch.nn.functional.interpolate(nifti_tensor, size=new_size, mode='trilinear', align_corners=False)
     # remove batch dimension for compatibility with later code
     nifti_tensor = torch.squeeze(nifti_tensor, 0)
     return nifti_tensor

@@ -15,7 +15,9 @@ def main():
     parser = argparse.ArgumentParser(description='Export 3D YOLO model to ONNX')
     parser.add_argument('--weights', type=str, required=True, help='Path to the model weights file (.pt)')
     parser.add_argument('--output', type=str, required=True, help='Path to save the ONNX model')
-    parser.add_argument('--imgsz', type=int, default=350, help='Input image size (default: 350)')
+    parser.add_argument('--img-size-x', type=int, default=350, help='Input image size for x axis')
+    parser.add_argument('--img-size-y', type=int, default=350, help='Input image size for y axis')
+    parser.add_argument('--img-size-z', type=int, default=350, help='Input image size for z axis')
     parser.add_argument('--input-channels', type=int, default=1, help='Number of input channels (default: 1)')
     args = parser.parse_args()
     
@@ -27,7 +29,7 @@ def main():
     # Hack to override the forward method
     model.__class__ = ExportModel
     
-    dummy_input = torch.randn(1, args.input_channels, args.imgsz, args.imgsz, args.imgsz,
+    dummy_input = torch.randn(1, args.input_channels, args.img_size_z, args.img_size_y, args.img_size_x,
                               dtype=torch.float32, device=device)
     
     torch.onnx.export(
