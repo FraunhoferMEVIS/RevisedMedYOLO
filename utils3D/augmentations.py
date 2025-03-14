@@ -61,12 +61,12 @@ def tensor_cutout(im: torch.Tensor, labels, cutout_params: List[List[float]], p=
     return im, labels
 
 
-def random_zoom(im: torch.Tensor, labels, max_zoom=1.5, min_zoom=0.7, p=0.5):
+def random_zoom(image: torch.Tensor, labels, max_zoom=1.5, min_zoom=0.7, p=0.5):
     """Randomly zooms in or out of a random part of the input image.
 
     Args:
-        im (torch.Tensor): 3-D tensor to be augmented.
-        labels (List[float]): Med YOLO labels corresponding to im. class z1 x1 y1 z2 x2 y2
+        image (torch.Tensor): 3-D tensor to be augmented.
+        labels (List[float]): MedYOLO labels corresponding to im. class z1 x1 y1 z2 x2 y2
         max_zoom (float, optional): maximum edge length multiplier. Defaults to 1.5.
         min_zoom (_type_, optional): minimum edge length multiplier. Defaults to 0.7.
         p (float, optional): probability of zooming the input. Defaults to 0.5.
@@ -76,31 +76,25 @@ def random_zoom(im: torch.Tensor, labels, max_zoom=1.5, min_zoom=0.7, p=0.5):
         y: Adjusted labels.
     """
     
-    y = labels.clone() if isinstance(labels, torch.Tensor) else np.copy(labels)
+    augmented_labels = labels.clone() if isinstance(labels, torch.Tensor) else np.copy(labels)
     
     if random.random() < p:
-        # retrieve original image shape (this is resized to imgsz x imgsz x imgsz by this point in the dataloader)
-        channels, d, w, h = im.shape
+        # retrieve original image shape (this is resized to imgsz_z x imgsz_y x imgsz_x by this point in the dataloader)
+        channels, d, h, w = image.shape
         
-        # setting limits for how far augmentation will zoom in or out
-        max_zoom_factor = max_zoom
-        min_zoom_factor = min_zoom
-        
-        # choosing the zoom level of the final image
-        zoom_factor = random.uniform(min_zoom_factor, max_zoom_factor)
+        zoom_factor = random.uniform(min_zoom, max_zoom)
 
         # add batch dimension for functional interpolate
-        im = torch.unsqueeze(im, 0)
-        # rescale image to its zoomed size
-        im = torch.nn.functional.interpolate(im, scale_factor=zoom_factor, mode='trilinear', align_corners=False)
+        image = torch.unsqueeze(image, 0)
+        image = torch.nn.functional.interpolate(image, scale_factor=zoom_factor, mode='trilinear', align_corners=False)
         # remove batch dimension for compatibility with later code
-        im = torch.squeeze(im, 0)
+        image = torch.squeeze(image, 0)
 
         # retrieve new image shape
-        new_d, new_w, new_h = im.shape[1:]
+        new_d, new_h, new_w = image.shape[1:]
         
         # shrink/expand labels
-        y[:, 1:7] = y[:, 1:7]*zoom_factor
+        augmented_labels[:, 1:7] = augmented_labels[:, 1:7]*zoom_factor
         
         # crop/pad the zoomed image back to the input size and position it randomly relative to the new tensor
         if zoom_factor >= 1.:
@@ -117,28 +111,28 @@ def random_zoom(im: torch.Tensor, labels, max_zoom=1.5, min_zoom=0.7, p=0.5):
             xmax = xmin + w
             ymax = ymin + h
             
-            im = im[:,zmin:zmax, xmin:xmax, ymin:ymax]
+            image = image[:,zmin:zmax, ymin:ymax, xmin:xmax]
 
             # move labels to correspond to new center of zoom
-            y[:, 1] = y[:, 1] - zmin
-            y[:, 4] = y[:, 4] - zmin
-            y[:, 2] = y[:, 2] - xmin
-            y[:, 5] = y[:, 5] - xmin
-            y[:, 3] = y[:, 3] - ymin
-            y[:, 6] = y[:, 6] - ymin
+            augmented_labels[:, 1] = augmented_labels[:, 1] - zmin
+            augmented_labels[:, 4] = augmented_labels[:, 4] - zmin
+            augmented_labels[:, 2] = augmented_labels[:, 2] - xmin
+            augmented_labels[:, 5] = augmented_labels[:, 5] - xmin
+            augmented_labels[:, 3] = augmented_labels[:, 3] - ymin
+            augmented_labels[:, 6] = augmented_labels[:, 6] - ymin
             
             # crop labels beyond bounds of new image
-            if isinstance(y, torch.Tensor):  # faster individually
-                y[:, 0].clamp_(0, d)  # z1
-                y[:, 1].clamp_(0, w)  # x1
-                y[:, 2].clamp_(0, h)  # y1
-                y[:, 3].clamp_(0, d)  # z2
-                y[:, 4].clamp_(0, w)  # x2
-                y[:, 5].clamp_(0, h)  # y2
+            if isinstance(augmented_labels, torch.Tensor):  # faster individually
+                augmented_labels[:, 1].clamp_(0, d)  # z1
+                augmented_labels[:, 2].clamp_(0, w)  # x1
+                augmented_labels[:, 3].clamp_(0, h)  # y1
+                augmented_labels[:, 4].clamp_(0, d)  # z2
+                augmented_labels[:, 5].clamp_(0, w)  # x2
+                augmented_labels[:, 6].clamp_(0, h)  # y2
             else:  # np.array (faster grouped)
-                y[:, [0, 3]] = y[:, [0, 3]].clip(0, d)  # z1, z2
-                y[:, [1, 4]] = y[:, [1, 4]].clip(0, w)  # x1, x2
-                y[:, [2, 5]] = y[:, [2, 5]].clip(0, h)  # y1, y2
+                augmented_labels[:, [1, 4]] = augmented_labels[:, [1, 4]].clip(0, d)  # z1, z2
+                augmented_labels[:, [2, 5]] = augmented_labels[:, [2, 5]].clip(0, w)  # x1, x2
+                augmented_labels[:, [3, 6]] = augmented_labels[:, [3, 6]].clip(0, h)  # y1, y2
              
         else:
             # new side lengths shorter than original side lengths
@@ -156,17 +150,17 @@ def random_zoom(im: torch.Tensor, labels, max_zoom=1.5, min_zoom=0.7, p=0.5):
             ymax = ymin + new_h
             
             # create a new tensor 
-            new_im = torch.rand(channels, d, w, h)*(torch.max(im) - torch.min(im)) + torch.min(im)
-            new_im[:,zmin:zmax, xmin:xmax, ymin:ymax] = im
-            im = new_im
-            del new_im
+            new_image = torch.rand(channels, d, h, w)*(torch.max(image) - torch.min(image)) + torch.min(image)
+            new_image[:,zmin:zmax, ymin:ymax, xmin:xmax] = image
+            image = new_image
+            del new_image
             
             # move labels to correspond to new center of zoom
-            y[:, 1] = y[:, 1] + zmin
-            y[:, 4] = y[:, 4] + zmin
-            y[:, 2] = y[:, 2] + xmin
-            y[:, 5] = y[:, 5] + xmin
-            y[:, 3] = y[:, 3] + ymin
-            y[:, 6] = y[:, 6] + ymin
+            augmented_labels[:, 1] = augmented_labels[:, 1] + zmin
+            augmented_labels[:, 4] = augmented_labels[:, 4] + zmin
+            augmented_labels[:, 2] = augmented_labels[:, 2] + xmin
+            augmented_labels[:, 5] = augmented_labels[:, 5] + xmin
+            augmented_labels[:, 3] = augmented_labels[:, 3] + ymin
+            augmented_labels[:, 6] = augmented_labels[:, 6] + ymin
 
-    return im, y
+    return image, augmented_labels
