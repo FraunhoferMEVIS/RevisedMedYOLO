@@ -113,7 +113,7 @@ def zxyzxy2zxydwhn(labels, d=default_size, w=default_size, h=default_size, clip=
         y (torch.tensor or np.ndarray): normalized image labels in [z, x, y, d, w, h] format
     """
     if clip:
-        clip_coords(labels, (d - eps, w - eps, h - eps))  # warning: inplace clip
+        clip_coords(labels, (d - eps, h - eps, w - eps))  # warning: inplace clip
     y = labels.clone() if isinstance(labels, torch.Tensor) else np.copy(labels)
     y[:, 0] = ((labels[:, 0] + labels[:, 3]) / 2) / d  # z center
     y[:, 1] = ((labels[:, 1] + labels[:, 4]) / 2) / w  # x center
@@ -148,9 +148,9 @@ def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     """Rescale bounding box coordinates (zxyzxy) from img1_shape to img0_shape.
 
     Args:
-        img1_shape (Tuple[int]): size of the resized image that predictions were made on.
-        coords (torch.tensor): bounding box coordinates to scale.
-        img0_shape (Tuple[int]): size of original image to scale coordinates to.
+        img1_shape (Tuple[int]): size of the resized image that predictions were made on. (z, y, x)
+        coords (torch.tensor): bounding box coordinates to scale. (z1, x1, y1, z2, x2, y2)
+        img0_shape (Tuple[int]): size of original image to scale coordinates to. (z, y, x)
         ratio_pad (Tuple[Tuple[float]], optional): ((d/d0, h/h0, w/w0), (padd, padx, pady)) Alternate way to determine gain and padding for rescaling. Defaults to None.
 
     Returns:
@@ -158,18 +158,18 @@ def scale_coords(img1_shape, coords, img0_shape, ratio_pad=None):
     """
     if ratio_pad is None: # calculate from img0_shape
         gainz = img1_shape[0] / img0_shape[0]  # gain = old / new
-        gainx = img1_shape[1] / img0_shape[1]
-        gainy = img1_shape[2] / img0_shape[2]
+        gainx = img1_shape[2] / img0_shape[2]
+        gainy = img1_shape[1] / img0_shape[1]
         padz = (img1_shape[0] - img0_shape[0] * gainz) / 2  # wh padding
-        padx = (img1_shape[1] - img0_shape[1] * gainx) / 2
-        pady = (img1_shape[2] - img0_shape[2] * gainy) / 2
+        padx = (img1_shape[2] - img0_shape[2] * gainx) / 2
+        pady = (img1_shape[1] - img0_shape[1] * gainy) / 2
     else:
         gainz = ratio_pad[0][0]
         padz = ratio_pad[1][0]
-        gainx = ratio_pad[0][1]
-        padx = ratio_pad[1][1]
-        gainy = ratio_pad[0][2]
-        pady = ratio_pad[1][2]
+        gainx = ratio_pad[0][2]
+        padx = ratio_pad[1][2]
+        gainy = ratio_pad[0][1]
+        pady = ratio_pad[1][1]
 
     coords[:, [0, 3]] -= padz  # z padding
     coords[:, [1, 4]] -= padx  # x padding
@@ -193,15 +193,15 @@ def clip_coords(boxes, shape):
     """
     if isinstance(boxes, torch.Tensor):  # faster individually
         boxes[:, 0].clamp_(0, shape[0])  # z1
-        boxes[:, 1].clamp_(0, shape[1])  # x1
-        boxes[:, 2].clamp_(0, shape[2])  # y1
+        boxes[:, 1].clamp_(0, shape[2])  # x1
+        boxes[:, 2].clamp_(0, shape[1])  # y1
         boxes[:, 3].clamp_(0, shape[0])  # z2
-        boxes[:, 4].clamp_(0, shape[1])  # x2
-        boxes[:, 5].clamp_(0, shape[2])  # y2
+        boxes[:, 4].clamp_(0, shape[2])  # x2
+        boxes[:, 5].clamp_(0, shape[1])  # y2
     else:  # np.array (faster grouped)
         boxes[:, [0, 3]] = boxes[:, [0, 3]].clip(0, shape[0])  # z1, z2
-        boxes[:, [1, 4]] = boxes[:, [1, 4]].clip(0, shape[1])  # x1, x2
-        boxes[:, [2, 5]] = boxes[:, [2, 5]].clip(0, shape[2])  # y1, y2
+        boxes[:, [1, 4]] = boxes[:, [1, 4]].clip(0, shape[2])  # x1, x2
+        boxes[:, [2, 5]] = boxes[:, [2, 5]].clip(0, shape[1])  # y1, y2
 
 
 def _3d_nms(boxes: torch.Tensor, scores: torch.Tensor, iou_threshold: float):

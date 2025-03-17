@@ -275,7 +275,7 @@ class LoadNiftisAndLabels(Dataset):
         # reshape im from width, height, depth, channels to channels, depth, height, width to make it compatible with torch convolutions
         im = transpose_nifti_shape(im)
 
-        d0, h0, w0, channels = im.size()
+        channels, d0, h0, w0 = im.size()
 
         # resize im to self.img_size
         im = change_nifti_size(im, self.img_size)
