@@ -22,7 +22,7 @@ def plot_metrics(folder):
     
     plt.figure(figsize=(10, 6))
     
-    all_metrics = list(set(metrics + val_metrics))
+    all_metrics = sorted(list(set(metrics + val_metrics)))
     colors = sns.color_palette("tab10", len(all_metrics))
     color_map = {metric: colors[i] for i, metric in enumerate(all_metrics)}
     
@@ -33,6 +33,10 @@ def plot_metrics(folder):
     for metric in val_metrics:
         if metric in val_df.columns:
             plt.plot(val_df["epoch"], val_df[metric], linestyle="solid", color=color_map[metric], label=f"Val {metric}")
+    
+    if "mAP@0.1:0.95" in val_df.columns:
+        best_epoch = val_df.loc[val_df["mAP@0.1:0.95"].idxmax(), "epoch"]
+        plt.axvline(x=best_epoch, color=color_map["mAP@0.1:0.95"], linestyle='dotted', label=f'Best Model (Epoch {best_epoch})')
     
     plt.xlabel("Epoch")
     plt.ylabel("Loss / Metric Value")
