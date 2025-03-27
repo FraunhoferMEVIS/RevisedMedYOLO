@@ -41,7 +41,7 @@ def plot_metrics(folder):
     plt.xlabel("Epoch")
     plt.ylabel("Loss / Metric Value")
     plt.title("Training and Validation Metrics per Epoch")
-    plt.legend()
+    plt.legend(loc="upper left")
     plt.grid(True)
     
     plt.savefig(output_path)
