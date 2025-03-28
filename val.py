@@ -100,7 +100,8 @@ def run(data,
         callbacks=Callbacks(),
         compute_loss=None,
         norm='CT',  # normalization mode, options: CT, MR, Other
-        epoch=None
+        epoch=None,
+        save_dir=Path('')
         ):
     
     imgsz = (img_size_z, img_size_y, img_size_x)

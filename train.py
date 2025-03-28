@@ -308,6 +308,7 @@ def train(hyp, opt, device, callbacks):
                                            single_cls=single_cls,
                                            dataloader=val_loader,
                                            project=opt.project,
+                                           save_dir=save_dir,
                                            plots=False,
                                            callbacks=callbacks,
                                            compute_loss=compute_loss,
