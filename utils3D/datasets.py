@@ -489,6 +489,8 @@ def open_nifti(filepath: str):
     nifti = np.array(nifti.dataobj)
     assert nifti is not None, 'Image Not Found ' + filepath
     nifti = torch.tensor(nifti, dtype=torch.float)
+    if len(nifti.shape) == 3:
+        nifti = nifti.unsqueeze(-1)
     return nifti, nifti_affine
 
 
