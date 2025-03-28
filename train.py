@@ -84,7 +84,7 @@ def train(hyp, opt, device, callbacks):
     with open(save_dir / 'training_loss.csv', 'w') as file:
         file.writelines('epoch,total_loss,bounding_box_loss,objectness_loss,classification_loss\n')
     with open(save_dir / 'validation_loss.csv', 'w') as file:
-        file.writelines('epoch,total_loss,bounding_box_loss,objectness_loss,classification_loss,mAP@0.1,mAP@0.1:0.95\n')
+        file.writelines('epoch,total_loss,bounding_box_loss,objectness_loss,classification_loss,mAP@0.1,mAP@0.5,mAP@0.1:0.95\n')
    
     # Config
     plots = False
@@ -307,7 +307,7 @@ def train(hyp, opt, device, callbacks):
                                            model=ema.ema,
                                            single_cls=single_cls,
                                            dataloader=val_loader,
-                                           save_dir=save_dir,
+                                           project=opt.project,
                                            plots=False,
                                            callbacks=callbacks,
                                            compute_loss=compute_loss,

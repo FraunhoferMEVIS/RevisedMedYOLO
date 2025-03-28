@@ -96,7 +96,6 @@ def run(data,
         half=True,  # use FP16 half-precision inference
         model=None,
         dataloader=None,
-        save_dir=Path(''),
         plots=True,
         callbacks=Callbacks(),
         compute_loss=None,
@@ -148,7 +147,7 @@ def run(data,
     seen = 0
     confusion_matrix = ConfusionMatrix(nc=nc)
     names = {k: v for k, v in enumerate(model.names if hasattr(model, 'names') else model.module.names)}
-    dt, p, r, f1, mp, mr, map50, map = [0.0, 0.0, 0.0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+    dt, p, r, f1, mp, mr, map10, map50, map = [0.0, 0.0, 0.0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     loss = torch.zeros(1, device=device)
     loss_items = torch.zeros(3, device=device)
     stats, ap, ap_class = [], [], []
@@ -232,8 +231,8 @@ def run(data,
     stats = [np.concatenate(x, 0) for x in zip(*stats)]  # to numpy
     if len(stats) and stats[0].any():
         p, r, ap, f1, ap_class = ap_per_class(*stats, plot=plots, save_dir=save_dir, names=names)
-        ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.1, AP@0.1:0.95
-        mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
+        ap10, ap50, ap = ap[:, 0], ap[:,8], ap.mean(1)  # AP@0.1, AP@0.5, AP@0.1:0.95
+        mp, mr, map10, map50, map = p.mean(), r.mean(), ap10.mean(), ap50.mean(), ap.mean()
         nt = np.bincount(stats[3].astype(np.int64), minlength=nc)  # number of targets per class
     else:
         nt = torch.zeros(1)
@@ -244,12 +243,12 @@ def run(data,
     s = ('%12s' + '%11s' * 9) % ('Class', 'Images', 'Labels', 'P', 'R', 'mAP@.1', 'mAP@.1:.95', 'box', 'obj', 'cls')
     print(s)
     pf = '%12s' + '%11i' * 2 + '%11.3g' * 7  # print format
-    print(pf % ('all', seen, nt.sum(), mp, mr, map50, map, loss_items_average[0], loss_items_average[1], loss_items_average[2]))
+    print(pf % ('all', seen, nt.sum(), mp, mr, map10, map, loss_items_average[0], loss_items_average[1], loss_items_average[2]))
     
     # Print results per class
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
         for i, c in enumerate(ap_class):
-            print(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
+            print(pf % (names[c], seen, nt[c], p[i], r[i], ap10[i], ap[i]))
     
     # Print speeds
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
@@ -264,7 +263,7 @@ def run(data,
     
     # Save validation loss
     with open(save_dir / 'validation_loss.csv', 'a') as file:
-        file.writelines(f'{epoch},{loss_average.item()},{loss_items_average[0]},{loss_items_average[1]},{loss_items_average[2]},{map50},{map}\n')
+        file.writelines(f'{epoch},{loss_average.item()},{loss_items_average[0]},{loss_items_average[1]},{loss_items_average[2]},{map10},{map50},{map}\n')
     
     # Return results
     model.float()  # for training
@@ -274,7 +273,7 @@ def run(data,
     maps = np.zeros(nc) + map
     for i, c in enumerate(ap_class):
         maps[c] = ap[i]
-    return (mp, mr, map50, map, *(loss_items.cpu() / len(dataloader)).tolist()), maps, t
+    return (mp, mr, map10, map, *(loss_items.cpu() / len(dataloader)).tolist()), maps, t
     
     
 def parse_opt():
