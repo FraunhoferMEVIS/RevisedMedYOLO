@@ -1,17 +1,9 @@
-"""
-General utility functions from YOLOv5 utils/general.py that have needed changes to function in 3D.
-"""
-
-# standard library imports
 import torch
 import time
 import numpy as np
 from pathlib import Path
 import yaml
 
-# 2D YOLO imports
-
-# 3D YOLO imports
 from utils3D.lossandmetrics import box_iou
 
 
@@ -376,10 +368,6 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
         # Filter by class
         if classes is not None:
             x = x[(x[:, 7:8] == torch.tensor(classes, device=x.device)).any(1)]
-
-        # Apply finite constraint
-        # if not torch.isfinite(x).all():
-        #     x = x[torch.isfinite(x).all(1)]
 
         # Check shape
         n = x.shape[0]  # number of boxes

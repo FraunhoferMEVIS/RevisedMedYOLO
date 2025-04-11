@@ -1,8 +1,3 @@
-"""
-Analyzes a YOLO3D Training dataset's labels and attempts to calculate ideal initial anchor hyperparameters for the model yaml file.
-"""
-
-# standard library imports
 import torch
 import numpy as np
 import yaml
@@ -20,9 +15,6 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative path
 
-# 2D YOLO imports
-
-# 3D YOLO imports
 from utils3D.datasets import LoadNiftisAndLabels, nifti_dataloader
 
 

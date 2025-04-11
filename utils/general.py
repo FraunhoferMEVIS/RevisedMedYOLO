@@ -1,14 +1,10 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
-"""
-General utils
-"""
 
 import glob
 import math
 import os
 import re
 from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import torch

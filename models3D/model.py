@@ -1,10 +1,3 @@
-"""
-Model definition script for 3D YOLO.  Defines the modules and the overall model.
-Modified with extra detection layer
-Mostly contains 3D versions of code from models/yolo.py and models/common.py
-"""
-
-# standard library imports
 import sys
 import torch
 from pathlib import Path
@@ -22,12 +15,8 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-# 2D YOLO imports
 from models.common import autopad, Concat
 from utils.general import make_divisible
-
-# 3D YOLO imports
-
 
 
 def attempt_load(weights, map_location=None, inplace=True, fuse=True):
@@ -123,7 +112,6 @@ def model_info(model, verbose=False):
                   (i, name, p.requires_grad, p.numel(), list(p.shape), p.mean(), p.std()))
 
 
-# YOLO layers
 class Conv(nn.Module):
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):
         """3D convolution and 3D batchnorm layer for 3D YOLO models

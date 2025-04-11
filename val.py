@@ -1,9 +1,3 @@
-"""
-Validation script for 3D YOLO.  Called as part of training script but can also be used to validate a model independently.
-Example cmd line call: python val.py --data example.yaml --weights ./runs/train/exp/weights/best.pt
-"""
-
-# standard library imports
 import argparse
 import os
 import sys
@@ -19,14 +13,12 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-# 2D YOLO imports
 from utils.general import check_dataset, check_img_size, check_suffix, check_yaml, increment_path, colorstr, print_args
 from utils.metrics import ap_per_class
 from utils.plots import plot_val_study
 from utils.torch_utils import select_device, time_sync
 from utils.callbacks import Callbacks
 
-# 3D YOLO imports
 from utils3D.datasets import nifti_dataloader
 from utils3D.general import zxyzxy2zxydwh, non_max_suppression, zxydwh2zxyzxy, scale_coords
 from utils3D.lossandmetrics import ConfusionMatrix, box_iou
@@ -37,10 +29,6 @@ default_size = 350 # edge length for testing
 
 
 def save_one_txt(predn, save_conf, shape, file):
-    # Save one txt result
-    # 2D:
-    # gn = torch.tensor(shape)[[1, 0, 1, 0]]  # normalization gain whwh
-    # 3D:
     gn = torch.tensor(shape)[[0, 2, 1, 0, 2, 1]]  # normalization gain dwhdwh
 
     for *zxyzxy, conf, cls in predn.tolist():
@@ -59,7 +47,6 @@ def process_batch(detections, labels, iouv):
     Returns:
         correct (Array[N, 10]), for 10 IoU levels
     """
-    # main changes from 2D are adding the 2 extra entries for z positions
     correct = torch.zeros(detections.shape[0], iouv.shape[0], dtype=torch.bool, device=iouv.device)
     iou = box_iou(labels[:, 1:], detections[:, :6])
     x = torch.where((iou >= iouv[0]) & (labels[:, 0:1] == detections[:, 7]))  # IoU above threshold and classes match
@@ -77,7 +64,7 @@ def process_batch(detections, labels, iouv):
 @torch.no_grad()
 def run(data,
         weights=None,  # model.pt path(s)
-        batch_size=32,  # batch size
+        batch_size=32,
         img_size_x=default_size,  # inference size (pixels) 
         img_size_y=default_size,  # inference size (pixels) 
         img_size_z=default_size,  # inference size (pixels) 
@@ -86,7 +73,7 @@ def run(data,
         task='val',  # train, val, test, speed or study
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
         single_cls=False,  # treat as single-class dataset
-        verbose=False,  # verbose output
+        verbose=False,
         save_txt=False,  # save results to *.txt
         save_hybrid=False,  # save label+prediction hybrid results to *.txt
         save_conf=False,  # save confidences in --save-txt labels
@@ -153,7 +140,6 @@ def run(data,
     loss_items = torch.zeros(3, device=device)
     stats, ap, ap_class = [], [], []
     
-    # for batch_i, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc=s)):
     for _, (img, targets, paths, shapes) in enumerate(tqdm(dataloader, desc='Validation')):
         t1 = time_sync()
         img = img.to(device, non_blocking=True)

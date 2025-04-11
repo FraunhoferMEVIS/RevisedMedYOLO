@@ -1,11 +1,7 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
-"""
-Dataloaders and dataset utils
-"""
 
 import hashlib
 import os
-
 import torch
 
 

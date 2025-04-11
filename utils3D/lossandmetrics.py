@@ -1,8 +1,3 @@
-"""
-Code used for loss functions and metrics for 3D YOLO.
-"""
-
-# standard library imports
 import torch
 import torch.nn as nn
 import numpy as np
@@ -10,11 +5,8 @@ import warnings
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-# 2D YOLO imports
 from utils.loss import smooth_BCE, FocalLoss
 from utils.torch_utils import is_parallel
-
-# 3D YOLO imports
 
 # Configuration
 default_size = 350 # edge length for testing

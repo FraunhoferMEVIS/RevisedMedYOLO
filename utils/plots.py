@@ -1,12 +1,7 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
-"""
-Plotting utils
-"""
 
 import os
-from copy import copy
 from pathlib import Path
-
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np

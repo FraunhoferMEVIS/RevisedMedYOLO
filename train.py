@@ -1,22 +1,16 @@
-"""
-Training script for 3D YOLO.
-Example cmd line call: python train.py --data example.yaml --adam
-"""
-
-# standard library imports
 import argparse
 from copy import deepcopy
 import os
 import random
 import sys
 import time
+import yaml
 from pathlib import Path
 import numpy as np
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn as nn
-import yaml
 from torch import amp
 from torch.optim import Adam, SGD, lr_scheduler
 from tqdm import tqdm
@@ -52,7 +46,7 @@ RANK = int(os.getenv('RANK', -1))
 WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
 
 # testing parameters, remove after dev
-default_size = 350 # edge length for testing, below 350 the model can't process the data
+default_size = 350 # edge length for testing
 default_epochs = 200
 default_batch = 8
 
@@ -207,11 +201,8 @@ def train(hyp, opt, device, callbacks):
     model.names = names
     
     # Start training
-    # t0 = time.time()
     nw = max(round(hyp['warmup_epochs'] * nb), 1000)  # number of warmup iterations, max(3 epochs, 1k iterations)
-    # nw = min(nw, (epochs - start_epoch) / 2 * nb)  # limit warmup to < 1/2 of training
     last_opt_step = -1
-    # maps = np.zeros(nc)  # mAP per class
     results = (0, 0, 0, 0, 0, 0, 0)  # P, R, mAP@.1, mAP@.1-.95, val_loss(box, obj, cls)
     scheduler.last_epoch = start_epoch - 1  # do not move
     scaler = amp.GradScaler(enabled=cuda)
@@ -244,7 +235,6 @@ def train(hyp, opt, device, callbacks):
             # Warmup
             if ni <= nw:
                 xi = [0, nw]  # x interp
-                # compute_loss.gr = np.interp(ni, xi, [0.0, 1.0])  # iou loss ratio (obj_loss = 1.0 or iou)
                 accumulate = max(1, np.interp(ni, xi, [1, nbs / batch_size]).round())
                 for j, x in enumerate(optimizer.param_groups):
                     # bias lr falls from 0.1 to lr0, all other lrs rise from 0.0 to lr0
@@ -375,7 +365,6 @@ def train(hyp, opt, device, callbacks):
 
 
 def parse_opt(known=False):
-    # parses the options in the arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='', help='initial weights path')
     parser.add_argument('--cfg', type=str, default=ROOT / 'models3D/yolo3Ds.yaml', help='model.yaml path')

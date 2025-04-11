@@ -1,9 +1,3 @@
-"""
-Detection script for 3D YOLO.  Used to generate bounding boxes from nifti scans.
-Example cmd line call: python detect.py --source ./data/nifti_folder/ --weights ./runs/train/exp/weights/best.pt
-"""
-
-# standard library imports
 import argparse
 import os
 import sys
@@ -17,11 +11,9 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-# 2D YOLO imports
 from utils.general import print_args, increment_path, check_suffix, check_img_size, colorstr
 from utils.torch_utils import select_device
 
-# 3D YOLO imports
 from models3D.model import attempt_load
 from utils3D.datasets import LoadNiftis
 from utils3D.general import non_max_suppression, scale_coords, zxyzxy2zxydwh

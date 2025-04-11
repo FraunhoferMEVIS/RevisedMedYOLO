@@ -1,17 +1,8 @@
-"""
-Augmentations used by 3D YOLO    
-"""
-
-
-# standard library imports
 import random
 import numpy as np
 import torch
 from typing import List
 
-# 2D YOLO imports
-
-# 3D YOLO imports
 from utils3D.lossandmetrics import bbox_iov
 
 

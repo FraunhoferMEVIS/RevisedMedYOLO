@@ -1,9 +1,3 @@
-"""
-Example script for converting MedYOLO predictions to nifti masks.
-Label to mask conversion functions may need adaptation for different projects.
-"""
-
-# standard library imports
 import argparse
 import os
 import nibabel as nib
@@ -45,9 +39,7 @@ def multilabel_mask_maker(bbox_path: str, nifti_path: str, mask_path: str):
     # load nifti
     nifti = nib.load(nifti_path)
     nifti_array = np.array(nifti.dataobj)
-    # mask_array = np.zeros_like(nifti_array)
 
-    # might need to flip order of height and width...
     width = nifti_array.shape[0]
     height = nifti_array.shape[1]
     depth = nifti_array.shape[2]
@@ -68,7 +60,6 @@ def multilabel_mask_maker(bbox_path: str, nifti_path: str, mask_path: str):
             box_dict[cls] = z, x, y, d, w, h, conf
 
     for cls in box_dict.keys():
-        # create empty mask
         mask_array = np.zeros_like(nifti_array)
         z, x, y, d, w, h, conf = box_dict[cls]
 
@@ -112,11 +103,9 @@ def mask_maker(bbox_path: str, nifti_path: str, mask_path: str):
     f = open(bbox_path, 'r')
     label = list(filter(None, f.read().split('\n'))) # filtering out blank lines
     
-    # load nifti and create empty mask
     nifti = nib.load(nifti_path)
     mask_array = np.zeros_like(np.array(nifti.dataobj))
     
-    # might need to flip order of height and width...
     width = mask_array.shape[0]           
     height = mask_array.shape[1]
     depth = mask_array.shape[2]

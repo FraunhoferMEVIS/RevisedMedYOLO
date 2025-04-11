@@ -1,18 +1,9 @@
-"""
-Automatic anchor generation utility functions
-Starting from scratch using YOLOv5 code as reference.
-"""
-
-# standard library imports
 import torch
 import numpy as np
 import yaml
 from tqdm import tqdm
 import random
 
-# 2D YOLO imports
-
-# 3D YOLO imports
 from utils3D.datasets import LoadNiftisAndLabels
 
 

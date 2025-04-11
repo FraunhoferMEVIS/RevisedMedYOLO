@@ -1,10 +1,6 @@
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
-"""
-Model validation metrics
-"""
 
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 

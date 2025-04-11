@@ -1,8 +1,3 @@
-"""
-Dataloaders and dataset utils for nifti datasets for YOLO3D
-"""
-
-# standard library imports
 import nibabel as nib
 import numpy as np
 from pathlib import Path
@@ -15,11 +10,8 @@ from typing import List
 import torch
 from torch.utils.data import Dataset
 
-# 2D YOLO imports
 from utils.torch_utils import torch_distributed_zero_first
 from utils.datasets import InfiniteDataLoader, get_hash
-
-# 3D YOLO imports
 from utils3D.general import zxyzxy2zxydwhn, zxydwhn2zxyzxy
 from utils3D.augmentations import tensor_cutout, random_zoom
 
@@ -300,10 +292,6 @@ class LoadNiftisAndLabels(Dataset):
         # Load image
         img, (d0, h0, w0), (d, h, w), _ = self.load_nifti(self.indices[index])
 
-        # Letterbox
-        # shape = (self.img_size, self.img_size, self.img_size) # not adding rectangular training yet
-        # img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment) # not implemented
-        # ratio = (1, 1, 1) # no letterboxing so the shape doesn't change and the ratios are all 1
         pad = (0, 0, 0) # shape not changing so not padding any side
         shapes = (d0, h0, w0), ((d/d0, h/h0, w/w0), pad)
 
@@ -321,14 +309,6 @@ class LoadNiftisAndLabels(Dataset):
             # transformation of labels back to standard format
             if nl:
                 labels[:, 1:7] = zxyzxy2zxydwhn(labels[:, 1:7], d=img.shape[1], w=img.shape[3], h=img.shape[2], clip=True, eps=1E-3)
-            
-            # Albumentations
-            
-            # HSV color-space
-            
-            # Flip up-down
-            
-            # Flip left-right
             
             # Cutouts
             img, labels = tensor_cutout(img, labels, self.hyp['cutout_params'], self.hyp['prob_cutout'])
