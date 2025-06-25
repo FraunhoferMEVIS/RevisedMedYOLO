@@ -120,9 +120,16 @@ RevisedMedYOLO works for 3D images with one or mutliple channels. For that you h
 
 ### Attribution
 
-If you use this work, please cite our corresponding publication:
+If you use this work, please cite our corresponding publication (https://openreview.net/pdf?id=Fl44mi5dFn):
 
-`enter when published`
+```bibtex
+@inproceedings{geissler2025revisedmedyolo,
+    title={RevisedMedYOLO: Unlocking Model Performance by Careful Training Code Inspection},
+    author={Geissler, Kai and Moltz, Jan Hendrik and Meine, Hans and Wenzel, Markus},
+    booktitle={Medical Imaging with Deep Learning-Short Papers},
+    year={2025}
+}
+```
 
 Please also cite the original MedYOLO paper, as we strongly built on their work. See their publication in JIIM: https://doi.org/10.1007/s10278-024-01138-2
 
